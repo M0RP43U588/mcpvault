@@ -14,15 +14,31 @@ const yamlEngine = {
   stringify: (data: any) => stringify(data),
 };
 
+// gray-matter merges caller engines over its defaults, which include a
+// `javascript` engine that eval()s frontmatter fenced as `---js`. Replace
+// every non-YAML language with an engine that refuses, so a crafted note can
+// never execute code; the parse() catch then treats it as plain content.
+const refuseEngine = {
+  parse: (): never => {
+    throw new Error('Only YAML frontmatter is supported');
+  },
+  stringify: (): never => {
+    throw new Error('Only YAML frontmatter is supported');
+  },
+};
+
 function withYamlEngine(options: Record<string, any> = {}): Record<string, any> {
   return {
     ...options,
     engines: {
       yaml: yamlEngine,
-      // gray-matter merges default engines; override JavaScript to prevent eval, including its js alias.
-      javascript: {
-        parse: () => { throw new Error('JavaScript frontmatter is not supported'); },
-      },
+      js: refuseEngine,
+      javascript: refuseEngine,
+      coffee: refuseEngine,
+      coffeescript: refuseEngine,
+      cson: refuseEngine,
+      json: refuseEngine,
+      toml: refuseEngine,
     },
   };
 }

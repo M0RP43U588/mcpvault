@@ -340,3 +340,29 @@ describe("CRLF notes", () => {
     expect(handler.parse(out).frontmatter.tags).toEqual(["a"]);
   });
 });
+
+test("---js frontmatter is never evaluated", () => {
+  const g = globalThis as any;
+  delete g.__mcpvaultPwned;
+  const content = `---js
+{ title: (globalThis.__mcpvaultPwned = true, "pwned") }
+---
+
+# Body`;
+
+  const result = handler.parse(content);
+
+  expect(g.__mcpvaultPwned).toBeUndefined();
+  expect(result.frontmatter).toEqual({});
+  expect(result.originalContent).toBe(content);
+});
+
+test("---javascript and ---coffee frontmatter are never evaluated", () => {
+  const g = globalThis as any;
+  delete g.__mcpvaultPwned;
+  for (const lang of ["javascript", "coffee"]) {
+    const result = handler.parse(`---${lang}\n(globalThis.__mcpvaultPwned = true)\n---\n\n# Body`);
+    expect(result.frontmatter).toEqual({});
+  }
+  expect(g.__mcpvaultPwned).toBeUndefined();
+});
