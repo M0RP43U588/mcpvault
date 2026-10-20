@@ -1,13 +1,11 @@
 import { join, resolve, relative, dirname } from 'path';
 import { homedir } from 'os';
 import { readdir, stat, readFile, writeFile, open, unlink, mkdir, access, rename, copyFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
 import { constants, lstatSync, realpathSync } from 'node:fs';
-import trash from 'trash';
 import { FrontmatterHandler } from './frontmatter.js';
 import { PathFilter } from './pathfilter.js';
 import { generateObsidianUri } from './uri.js';
-import type { ParsedNote, DirectoryListing, NoteWriteParams, DeleteNoteParams, DeleteResult, MoveNoteParams, MoveFileParams, MoveResult, BatchReadParams, BatchReadResult, UpdateFrontmatterParams, NoteInfo, TagManagementParams, TagManagementResult, PatchNoteParams, PatchNoteResult, VaultStats, NoteHeading, ReadNoteLinesParams } from './types.js';
+import type { ParsedNote, DirectoryListing, NoteWriteParams, MoveNoteParams, MoveFileParams, MoveResult, BatchReadParams, BatchReadResult, UpdateFrontmatterParams, NoteInfo, TagManagementParams, TagManagementResult, PatchNoteParams, PatchNoteResult, VaultStats, NoteHeading, ReadNoteLinesParams } from './types.js';
 
 /**
  * Map a filesystem write failure to a clear, accurate Error.
@@ -197,7 +195,7 @@ export class FileSystemService {
     }
     await mkdir(dirname(fullPath), { recursive: true });
 
-    const tmpPath = join(dirname(fullPath), `.mcpvault-${randomUUID()}.tmp`);
+    const tmpPath = join(dirname(fullPath), `.mcpvault-${globalThis.crypto.randomUUID()}.tmp`);
     const file = await open(tmpPath, 'wx', mode ?? 0o666);
     try {
       try {
@@ -510,113 +508,6 @@ export class FileSystemService {
       return stats.isDirectory();
     } catch {
       return false;
-    }
-  }
-
-  async deleteNote(params: DeleteNoteParams): Promise<DeleteResult> {
-    const { trashMode = 'none' } = params;
-    const path = this.normalizePath(params.path);
-    const confirmPath = this.normalizePath(params.confirmPath);
-
-    // Confirmation check - paths must match exactly
-    if (path !== confirmPath) {
-      return {
-        success: false,
-        path: path,
-        message: "Deletion cancelled: confirmation path does not match. For safety, both 'path' and 'confirmPath' must be identical."
-      };
-    }
-
-    const fullPath = this.resolvePath(path);
-
-    if (!this.pathFilter.isAllowed(path)) {
-      return {
-        success: false,
-        path: path,
-        message: `Access denied: ${path}. This path is restricted (system files like .obsidian, .git, and dotfiles are not accessible).`
-      };
-    }
-
-    try {
-      // Check if it's a directory first (can't delete directories with this method)
-      const isDir = await this.isDirectory(path);
-      if (isDir) {
-        return {
-          success: false,
-          path: path,
-          message: `Cannot delete: ${path} is not a file`
-        };
-      }
-
-      if (trashMode === 'local') {
-        const trashDir = join(this.vaultPath, '.trash');
-        const trashPath = join(trashDir, path);
-
-        // Ensure trash directory exists
-        await mkdir(dirname(trashPath), { recursive: true });
-
-        // Handle collisions by appending a timestamp
-        let finalTrashPath = trashPath;
-        try {
-          await access(finalTrashPath, constants.F_OK);
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const ext = path.endsWith('.md') ? '.md' : '';
-          const base = ext ? path.slice(0, -ext.length) : path;
-          const collidedPath = `${base}-${timestamp}${ext}`;
-          finalTrashPath = join(trashDir, collidedPath);
-        } catch {
-          // File does not exist in trash, no collision
-        }
-
-        await rename(fullPath, finalTrashPath);
-
-        return {
-          success: true,
-          path: path,
-          message: `Successfully moved note to vault trash: ${path}`
-        };
-      }
-
-      if (trashMode === 'system') {
-        await trash(fullPath, { glob: false });
-        return {
-          success: true,
-          path: path,
-          message: `Successfully moved note to system trash: ${path}`
-        };
-      }
-
-      // Perform the deletion using Node.js native API
-      await unlink(fullPath);
-
-      return {
-        success: true,
-        path: path,
-        message: `Successfully deleted note: ${path}. This action cannot be undone.`
-      };
-
-    } catch (error) {
-      if (error instanceof Error && 'code' in error) {
-        if (error.code === 'ENOENT') {
-          return {
-            success: false,
-            path: path,
-            message: `File not found: ${path}. Use list_directory to see available files.`
-          };
-        }
-        if (error.code === 'EACCES') {
-          return {
-            success: false,
-            path: path,
-            message: `Permission denied: ${path}. The file exists but cannot be deleted due to filesystem permissions.`
-          };
-        }
-      }
-      return {
-        success: false,
-        path: path,
-        message: `Failed to delete file: ${path} - ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
     }
   }
 

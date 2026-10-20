@@ -26,18 +26,6 @@ export interface PatchNoteResult {
   matchCount?: number;
 }
 
-export interface DeleteNoteParams {
-  path: string;
-  confirmPath: string;
-  trashMode?: 'none' | 'local' | 'system';
-}
-
-export interface DeleteResult {
-  success: boolean;
-  path: string;
-  message: string;
-}
-
 export interface DirectoryListing {
   files: string[];
   directories: string[];

@@ -36,7 +36,7 @@ afterEach(async () => {
 // ============================================================================
 
 describe("Integration: Service Layer Workflows", () => {
-  test("write, read, and delete note workflow", async () => {
+  test("write and read note workflow", async () => {
     // 1. Write a note with frontmatter
     await fileSystem.writeNote({
       path: "test-note.md",
@@ -49,13 +49,6 @@ describe("Integration: Service Layer Workflows", () => {
     expect(note.content).toContain("This is a test");
     expect(note.frontmatter?.tags).toEqual(["test"]);
     expect(note.frontmatter?.status).toBe("draft");
-
-    // 3. Delete the note
-    const deleteResult = await fileSystem.deleteNote({
-      path: "test-note.md",
-      confirmPath: "test-note.md"
-    });
-    expect(deleteResult.success).toBe(true);
   });
 
   test("search notes with special characters in filenames", async () => {

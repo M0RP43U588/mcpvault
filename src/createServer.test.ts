@@ -37,11 +37,10 @@ test("server registers 18 tools", async () => {
   ]);
 
   const result = await client.listTools();
-  expect(result.tools).toHaveLength(18);
+  expect(result.tools).toHaveLength(17);
 
   const toolNames = result.tools.map((t) => t.name).sort();
   expect(toolNames).toEqual([
-    "delete_note",
     "get_frontmatter",
     "get_note_outline",
     "get_notes_info",
@@ -83,6 +82,26 @@ test("server can read and write notes via tools", async () => {
   const result = await client.callTool({ name: "read_note", arguments: { path: "test.md" } });
   const parsed = JSON.parse((result.content as any)[0].text);
   expect(parsed.content).toContain("Hello World");
+
+  await client.close();
+  await server.close();
+});
+
+test("delete_note is removed and cannot be called", async () => {
+  const server = createServer(testVaultPath, { version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+  const client = new Client({ name: "test-client", version: "1.0.0" });
+
+  await Promise.all([
+    client.connect(clientTransport),
+    server.connect(serverTransport),
+  ]);
+
+  await writeFile(join(testVaultPath, "keep.md"), "# Keep");
+  const result = await client.callTool({ name: "delete_note", arguments: { path: "keep.md", confirmPath: "keep.md" } });
+  expect(result.isError).toBe(true);
+  expect(await readFile(join(testVaultPath, "keep.md"), "utf8")).toBe("# Keep");
 
   await client.close();
   await server.close();
@@ -313,7 +332,6 @@ test("read-only mode exposes read tools and rejects every vault mutation", async
     const mutations = [
       { name: "write_note", arguments: { path: "blocked.md", content: "blocked" } },
       { name: "patch_note", arguments: { path: "existing.md", oldString: "Safe", newString: "Changed" } },
-      { name: "delete_note", arguments: { path: "existing.md", confirmPath: "existing.md" } },
       { name: "move_note", arguments: { oldPath: "existing.md", newPath: "moved.md" } },
       { name: "move_file", arguments: { oldPath: "existing.md", newPath: "moved.md", confirmOldPath: "existing.md", confirmNewPath: "moved.md" } },
       { name: "update_frontmatter", arguments: { path: "existing.md", frontmatter: { status: "changed" } } },
