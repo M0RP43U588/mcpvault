@@ -1,0 +1,16 @@
+# Hardened install/runtime defaults for this fork. See CLAUDE.md.
+
+[install]
+# Pin exact versions when adding deps (no ^ / ~ ranges).
+exact = true
+# Never auto-install missing imports from npm at runtime.
+auto = "disable"
+# Refuse package versions published less than 7 days ago.
+minimumReleaseAge = 604800
+
+[run]
+# Run package.json scripts and bin shims under Bun, not Node.
+bun = true
+
+[test]
+root = "src"
