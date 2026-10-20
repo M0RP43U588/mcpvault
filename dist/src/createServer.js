@@ -8,7 +8,6 @@ import { posix, resolve } from "path";
 const MUTATING_TOOLS = new Set([
     "write_note",
     "patch_note",
-    "delete_note",
     "move_note",
     "move_file",
     "update_frontmatter",
@@ -94,19 +93,6 @@ export function createServer(vaultPath, options = {}) {
                         path: { type: "string", description: "Path relative to vault root (default: '/')", default: "/" },
                         prettyPrint: { type: "boolean", description: "Format JSON response with indentation (default: false)", default: false }
                     }
-                }
-            },
-            {
-                name: "delete_note",
-                description: "Delete a note from the Obsidian vault (requires confirmation). Supports permanent delete, vault trash, or system trash.",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        path: { type: "string", description: "Path to the note relative to vault root" },
-                        confirmPath: { type: "string", description: "Confirmation: must exactly match the path parameter to proceed with deletion" },
-                        trashMode: { type: "string", enum: ["none", "local", "system"], description: "Deletion mode: 'none' = permanent delete (default), 'local' = move to .trash inside vault, 'system' = move to OS trash", default: "none" }
-                    },
-                    required: ["path", "confirmPath"]
                 }
             },
             {
@@ -349,17 +335,6 @@ export function createServer(vaultPath, options = {}) {
                     const indent = trimmedArgs.prettyPrint ? 2 : undefined;
                     return {
                         content: [{ type: "text", text: JSON.stringify({ dirs: directories, files }, null, indent) }]
-                    };
-                }
-                case "delete_note": {
-                    const result = await fileSystem.deleteNote({
-                        path: trimmedArgs.path,
-                        confirmPath: trimmedArgs.confirmPath,
-                        trashMode: trimmedArgs.trashMode
-                    });
-                    return {
-                        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-                        isError: !result.success
                     };
                 }
                 case "search_notes": {
