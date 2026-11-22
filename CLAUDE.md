@@ -39,7 +39,7 @@ Only the local build runs, never `npx`, `bunx`, `@latest` or a registry package:
 - Root `package.json` has no lifecycle hooks (`prepare`, `prepack`, `postinstall`…) and is `private: true`. Keep it that way.
 
 ## Audit, build, test
-Run **`bun audit` before every build or update** and report the findings.
+Run `bash fork/check.sh` (install, audit, build, test) before every build or update.
 ```bash
 bun install --frozen-lockfile --ignore-scripts
 bun audit
@@ -53,16 +53,7 @@ Known, accepted advisories (re-check on every update):
 - `sprintf-js` 1.0.3, GHSA-hp3w-g68c-fv3c (via gray-matter > js-yaml > argparse): `argparse` is only used by js-yaml's CLI and is outside the runtime import graph.
 
 ## Upstream sync
-Remotes: `origin` = my fork, `upstream` = bitbonsai/mcpvault (push URL set to `DISABLED`).
-1. `git fetch upstream`
-2. Review `git log main..upstream/main` and `git diff main...upstream/main` with focus on:
-   - dependency changes: `package.json` and upstream `package-lock.json` (which signals bumps I mirror by hand into our exact pins + `bun.lock`), new install scripts
-   - path handling / traversal: `src/pathfilter.ts`, `normalizePath`, `resolvePath`, symlink checks, new tools' path guards
-   - write/delete/move ops in `src/filesystem.ts`, and anything that reintroduces delete or `trash`
-   - any network calls or new transports
-   - `.claude/`, `.github/workflows/`, `scripts/` (code that runs on my machine or in CI)
-3. Summarize the findings and **merge only after my explicit approval**. Then run audit → build → test, and recommit `dist/`.
-4. `website-shibumi/`, `skills/`, `benchmarks/` and the deploy files are upstream-only and never run here. Accept their changes without review.
+Remotes: `origin` = my fork, `upstream` = bitbonsai/mcpvault (push URL `DISABLED`). Bumps follow `.claude/skills/bump/SKILL.md`: cloud prepares branch `claude/bump-mcpvault-<tag>` (rebase onto the tag, rebuilt `dist/`, `fork/check.sh`), the Mac runs `bash fork/finalize-bump.sh <tag>` (verify, move `main` and `upstream-release`, delete the branch). Review focus: dependency changes (mirrored by hand as exact pins into `bun.lock`), path handling and symlink checks (`src/pathfilter.ts`, `normalizePath`, `resolvePath`), write/move ops, anything reintroducing delete or `trash`, network calls or transports, `.claude/`, `.github/`, `scripts/`. `website-shibumi/`, `skills/`, `benchmarks/` and deploy files are upstream-only: accept without review. Accepted advisories live in `fork/accepted-advisories.txt`. After a bump only `main` remains.
 
 ## Optimization
 - Tool surface: 17 tools (upstream's 18 minus `delete_note`). Keep read, search, write, patch and frontmatter tools. Ask before removing more.

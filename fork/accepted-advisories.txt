@@ -1,0 +1,9 @@
+# GHSA ids that bun audit may report without failing fork/check.sh. Re-check on every bump.
+# Client SDK: dev-only (tests); OAuth and HTTP clients are never used.
+GHSA-6qxp-vccf-f47h
+GHSA-6prh-2h8m-c8cw
+# Server SDK: all concern HTTP transports/OAuth; this fork is stdio only and never imports them.
+GHSA-jm63-cq47-j5jp
+GHSA-46jr-4wx8-v453
+GHSA-rvq5-wwqv-78pq
+GHSA-f897-62hf-6gxq
