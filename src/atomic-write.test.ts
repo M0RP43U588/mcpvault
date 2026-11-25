@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FileSystemService } from './filesystem.js';
 
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof fs>();
+// bun:test passes no importOriginal to the factory; keep a copy of the real module instead.
+const actual = { ...fs };
+
+vi.mock('node:fs/promises', () => {
   return {
     ...actual,
     open: vi.fn(actual.open),
@@ -83,7 +85,7 @@ describe('atomic and serialized note writes', () => {
     }
   });
 
-  test.skipIf(process.platform === 'win32')('a read-only note cannot be replaced through its writable parent', async () => {
+  test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('a read-only note cannot be replaced through its writable parent', async () => {
     await fs.writeFile(join(vault, 'note.md'), 'original');
     await fs.chmod(join(vault, 'note.md'), 0o444);
     try {

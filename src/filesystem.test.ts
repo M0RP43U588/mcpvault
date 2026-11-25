@@ -4,17 +4,19 @@ import { PathFilter } from "./pathfilter.js";
 import { writeFile, readFile, readdir, mkdir, mkdtemp, rm, symlink } from "fs/promises";
 import { join, relative } from "path";
 import { tmpdir, homedir } from "os";
+import * as fsp from "node:fs/promises";
 
 // ESM namespace exports are not configurable, so spyOn cannot reach the
 // bindings filesystem.ts already imported. Faults are injected at the
 // node:fs/promises boundary and cleared in each test's finally.
-const fsFaults = vi.hoisted(() => ({
+// bun:test has no vi.hoisted and passes no importOriginal: use a plain const and a copy of the real module.
+const fsFaults = ({
   readFile: undefined as Error | undefined,
   writeFile: undefined as Error | undefined,
-}));
+});
+const actual = { ...fsp };
 
-vi.mock("node:fs/promises", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs/promises")>();
+vi.mock("node:fs/promises", () => {
   return {
     ...actual,
     readFile: (...args: any[]) => {

@@ -40,7 +40,8 @@ describe.each(["\n", "\r\n"])("executable frontmatter with %j line endings", (eo
     `\uFEFF---${language}`
   ]))("keeps %j as content without executing it", (opening) => {
     const probe = vi.fn(() => ({ executed: true }));
-    vi.stubGlobal("__mcpvaultFrontmatterProbe", probe);
+    // bun:test has no vi.stubGlobal; assign and restore by hand.
+    (globalThis as any).__mcpvaultFrontmatterProbe = probe;
     try {
       const note = [opening, "globalThis.__mcpvaultFrontmatterProbe()", "---", "Body", ""].join(eol);
       const parsed = handler.parse(note);
@@ -55,15 +56,16 @@ describe.each(["\n", "\r\n"])("executable frontmatter with %j line endings", (eo
       expect(handler.parse(updated).content).toBe(note);
       expect(probe).not.toHaveBeenCalled();
     } finally {
-      vi.unstubAllGlobals();
+      delete (globalThis as any).__mcpvaultFrontmatterProbe;
     }
   });
 });
 
-test("safe JSON frontmatter still parses", () => {
+// Fork rule: every non-YAML engine stays disabled (upstream still parses ---json).
+test("---json frontmatter is refused and kept as content", () => {
   const note = '---json\n{"tags":["a"]}\n---\nBody';
-  expect(handler.parse(note).frontmatter).toEqual({ tags: ["a"] });
-  expect(handler.parse(note).content).toBe("Body");
+  expect(handler.parse(note).frontmatter).toEqual({});
+  expect(handler.parse(note).content).toBe(note);
 });
 
 test("stringify with frontmatter", () => {
